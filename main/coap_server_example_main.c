@@ -31,6 +31,8 @@
 
 #include "coap3/coap.h"
 
+#include "mdns.h" // Added to determine IP Address
+
 #ifndef CONFIG_COAP_SERVER_SUPPORT
 #error COAP_SERVER_SUPPORT needs to be enabled
 #endif /* COAP_SERVER_SUPPORT */
@@ -82,7 +84,39 @@ extern uint8_t server_key_start[] asm("_binary_coap_server_key_start");
 extern uint8_t server_key_end[]   asm("_binary_coap_server_key_end");
 #endif /* CONFIG_COAP_MBEDTLS_PKI */
 
-#define INITIAL_DATA "Hello World!"
+#define INITIAL_DATA "PLATON ENGINEERING"
+
+/*
+ * Configure Mdns protocol and set hostname and instance name
+ *
+*/
+
+void start_mdns_services(void){
+
+    // Initialize mDNS service
+    mdns_init();
+    printf("\nmDNS running...\n");
+
+    // Set Hostname
+    mdns_hostname_set("esp32_SERVER");
+    // Set instance
+    mdns_instance_name_set("ESP SERVER");
+
+}
+
+void add_mdns_services(void){
+
+    //structure with TXT records
+    mdns_txt_item_t serviceTxtData[3] = {
+        {"board", "esp32 Server Coap"},
+        {"u", "dadipl"},
+        {"p", "12345678"}
+    };
+
+    // add services
+    mdns_service_add("ESP32 SERVER COAP", "_http", "_tcp", 80, serviceTxtData, 3);
+}
+
 
 /*
  * The resource handler
@@ -303,7 +337,7 @@ static void coap_example_server(void *p)
             ESP_LOGI(TAG, "MbedTLS (D)TLS Server Mode not configured");
         }
 #endif /* CONFIG_COAP_MBEDTLS_PSK || CONFIG_COAP_MBEDTLS_PKI */
-        resource = coap_resource_init(coap_make_str_const("Espressif"), 0);
+        resource = coap_resource_init(coap_make_str_const("DanielHome"), 0);
         if (!resource) {
             ESP_LOGE(TAG, "coap_resource_init() failed");
             goto clean_up;
@@ -359,6 +393,9 @@ void app_main(void)
     ESP_ERROR_CHECK( nvs_flash_init() );
     ESP_ERROR_CHECK(esp_netif_init());
     ESP_ERROR_CHECK(esp_event_loop_create_default());
+
+    start_mdns_services();
+    add_mdns_services();
 
     /* This helper function configures Wi-Fi or Ethernet, as selected in menuconfig.
      * Read "Establishing Wi-Fi or Ethernet Connection" section in
